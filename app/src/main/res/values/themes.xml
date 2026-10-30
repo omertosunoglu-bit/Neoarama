@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_bg">#22C55E</color>
+    <style name="Theme.NeoArama" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F4F5F8</item>
+    </style>
+    <style name="Theme.NeoArama.Call" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#070A10</item>
+    </style>
+</resources>
