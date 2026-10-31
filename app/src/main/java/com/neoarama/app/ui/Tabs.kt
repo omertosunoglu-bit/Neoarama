@@ -162,6 +162,7 @@ fun RecentsTab(
             FilterChip(selected = !missedOnly, onClick = { missedOnly = false }, label = { Text("Tümü") })
             FilterChip(selected = missedOnly, onClick = { missedOnly = true }, label = { Text("Cevapsız") })
         }
+        if (list.isNotEmpty()) SwipeHint()
         if (list.isEmpty()) {
             EmptyState(if (missedOnly) "Cevapsız arama yok" else "Arama geçmişi boş", "Yaptığınız ve aldığınız aramalar burada görünür.")
             return@Column
@@ -184,6 +185,12 @@ fun RecentsTab(
 private fun RecentRow(e: CallEntry, contact: Contact?, onCall: (String) -> Unit, onOpen: (CallEntry) -> Unit) {
     val name = contact?.name ?: e.name ?: if (e.number.isBlank()) "Gizli numara" else PhoneUtil.format(e.number)
     val missed = isMissed(e.type)
+    val ctx = LocalContext.current
+    val hasNumber = e.number.isNotBlank()
+    SwipeRow(
+        onSwipeRight = if (hasNumber) ({ onCall(e.number) }) else null,
+        onSwipeLeft = if (hasNumber) ({ openWhatsApp(ctx, contact?.let { whatsappNumber(it) } ?: e.number) }) else null
+    ) {
     Row(
         Modifier.fillMaxWidth().clickable { onOpen(e) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -212,6 +219,7 @@ private fun RecentRow(e: CallEntry, contact: Contact?, onCall: (String) -> Unit,
                 Icon(painterResource(R.drawable.ic_call), "Ara", tint = MaterialTheme.colorScheme.tertiary)
             }
         }
+    }
     }
 }
 
@@ -244,6 +252,7 @@ fun ContactsTab(contacts: List<Contact>, onOpen: (Contact) -> Unit, onCall: (Str
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
         )
+        if (filtered.isNotEmpty()) SwipeHint()
         if (filtered.isEmpty()) {
             EmptyState(if (contacts.isEmpty()) "Rehber boş" else "Sonuç yok", if (contacts.isEmpty()) "Rehber izni verildiğinde kişileriniz burada görünür." else "Farklı bir ad ya da numara deneyin.")
             return@Column
@@ -266,6 +275,11 @@ fun ContactsTab(contacts: List<Contact>, onOpen: (Contact) -> Unit, onCall: (Str
 
 @Composable
 private fun ContactRow(c: Contact, onOpen: (Contact) -> Unit, onCall: (String) -> Unit) {
+    val ctx = LocalContext.current
+    SwipeRow(
+        onSwipeRight = c.primary?.let { n -> { onCall(n) } },
+        onSwipeLeft = whatsappNumber(c)?.let { n -> { openWhatsApp(ctx, n) } }
+    ) {
     Row(
         Modifier.fillMaxWidth().clickable { onOpen(c) }.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -287,6 +301,17 @@ private fun ContactRow(c: Contact, onOpen: (Contact) -> Unit, onCall: (String) -
             }
         }
     }
+    }
+}
+
+@Composable
+private fun SwipeHint() {
+    Text(
+        "Sağa kaydır: ara   ·   Sola kaydır: WhatsApp",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 12.sp,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp)
+    )
 }
 
 /* =====================  TUŞ TAKIMI  ===================== */
