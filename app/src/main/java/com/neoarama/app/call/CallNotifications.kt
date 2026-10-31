@@ -44,8 +44,12 @@ object CallNotifications {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+    /**
+     * @param repost true ise bildirim önce kaldırılıp yeniden gönderilir (üstte duran küçük
+     * bildirimi kapatmak ya da yeniden göstermek için).
+     */
     @SuppressLint("MissingPermission")
-    fun show(ctx: Context) {
+    fun show(ctx: Context, repost: Boolean = false) {
         val call = CallManager.primary()
         if (call == null) {
             cancel(ctx)
@@ -57,19 +61,23 @@ object CallNotifications {
             ?: if (number.isBlank()) "Gizli numara" else PhoneUtil.format(number)
         val state = call.stateCompat()
         val ringing = state == Call.STATE_RINGING
+        // Tam ekran görünüyorsa (ya da açılmak üzereyse) üstten küçük bildirim gösterme
+        val headsUp = ringing && !CallManager.uiVisible && !CallManager.expectingUi
 
         val openIntent = Intent(ctx, InCallActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val openPi = PendingIntent.getActivity(
             ctx, 1, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val b = NotificationCompat.Builder(ctx, if (ringing) CH_INCOMING else CH_ONGOING)
+        val b = NotificationCompat.Builder(ctx, if (headsUp) CH_INCOMING else CH_ONGOING)
             .setSmallIcon(R.drawable.ic_call)
             .setContentTitle(name)
             .setContentIntent(openPi)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Saat kendi arama ekranını gösterir; aynı aramanın saatte ikinci kez görünmesini önle
+            .setLocalOnly(true)
 
         if (ringing) {
             val answerPi = PendingIntent.getActivity(
@@ -80,10 +88,13 @@ object CallNotifications {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             b.setContentText("Gelen arama")
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setFullScreenIntent(openPi, true)
+                .setOnlyAlertOnce(true)
                 .addAction(R.drawable.ic_call_end, "Reddet", broadcast(ctx, ACTION_DECLINE, 3))
                 .addAction(R.drawable.ic_call, "Cevapla", answerPi)
+            if (headsUp) {
+                b.setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setFullScreenIntent(openPi, true)
+            }
         } else {
             val active = state == Call.STATE_ACTIVE
             val connect = call.details.connectTimeMillis
@@ -102,6 +113,7 @@ object CallNotifications {
 
         try {
             val nmc = NotificationManagerCompat.from(ctx)
+            if (repost) nmc.cancel(ID)
             if (nmc.areNotificationsEnabled()) nmc.notify(ID, b.build())
         } catch (e: SecurityException) {
             // Bildirim izni yoksa arama ekranı yine açılır.

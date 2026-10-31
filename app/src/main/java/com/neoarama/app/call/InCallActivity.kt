@@ -132,7 +132,29 @@ class InCallActivity : ComponentActivity() {
         else if (!on && wl.isHeld) wl.release(PowerManager.RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY)
     }
 
+    override fun onResume() {
+        super.onResume()
+        CallManager.uiVisible = true
+        CallManager.expectingUi = false
+        // Tam ekran açıldı: üstteki küçük gelen arama bildirimini kaldır
+        if (CallManager.primary()?.stateCompat() == Call.STATE_RINGING) {
+            CallNotifications.show(this, repost = true)
+        }
+    }
+
+    override fun onPause() {
+        CallManager.uiVisible = false
+        // Çalarken ekrandan çıkılırsa (ana ekran tuşu vb.) küçük bildirim geri gelsin
+        // (Güç tuşuyla ekran kapatıldıysa tekrar gösterme; yoksa ekran yeniden açılırdı.)
+        val screenOn = (getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        if (!isFinishing && screenOn && CallManager.primary()?.stateCompat() == Call.STATE_RINGING) {
+            CallNotifications.show(this, repost = true)
+        }
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        CallManager.uiVisible = false
         setProximity(false)
         super.onDestroy()
     }

@@ -21,7 +21,20 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: İmza anahtarını hazırla
+        env:
+          KEYSTORE_B64: ${{ secrets.NEO_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::NEO_KEYSTORE_B64 secret tanımlı değil; APK sabit anahtarla imzalanamaz."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/neo.keystore"
+          echo "NEO_KEYSTORE_FILE=$RUNNER_TEMP/neo.keystore" >> "$GITHUB_ENV"
+
       - name: APK derle
+        env:
+          NEO_KEYSTORE_PASSWORD: ${{ secrets.NEO_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon

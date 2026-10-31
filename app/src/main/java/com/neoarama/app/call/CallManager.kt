@@ -29,6 +29,12 @@ object CallManager {
 
     var service: InCallService? = null
 
+    /** Tam ekran arama ekranı şu an görünüyor mu? Görünüyorsa üstten küçük bildirim çıkmaz. */
+    @Volatile var uiVisible = false
+
+    /** Tam ekran açılmak üzere (telefon kullanımdayken gelen arama). */
+    @Volatile var expectingUi = false
+
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) = changed()
         override fun onDetailsChanged(call: Call, details: Call.Details) = changed()
@@ -54,6 +60,7 @@ object CallManager {
             cause = call.details.disconnectCause?.label?.toString()?.takeIf { it.isNotBlank() }
         )
         _calls.value = _calls.value - call
+        if (_calls.value.isEmpty()) expectingUi = false
         changed()
     }
 

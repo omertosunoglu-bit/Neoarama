@@ -12,15 +12,38 @@ android {
         applicationId = "com.neoarama.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // GitHub'daki her derleme numarası bir öncekinden büyüktür; güncellemeler sorunsuz kurulur.
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = run
+        versionName = "1.0.$run"
+    }
+
+    // Her derlemede AYNI anahtar kullanılır; böylece yeni APK eskisinin üzerine güncelleme olarak kurulur.
+    // Anahtar depoda değil, GitHub "secrets" içinde durur; derleme sırasında ortam değişkenleriyle gelir.
+    val keystorePath = System.getenv("NEO_KEYSTORE_FILE")
+    val keystorePass = System.getenv("NEO_KEYSTORE_PASSWORD")
+    val hasKey = !keystorePath.isNullOrBlank() && !keystorePass.isNullOrBlank()
+
+    signingConfigs {
+        create("neo") {
+            if (hasKey) {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePass
+                keyAlias = "neoarama"
+                keyPassword = keystorePass
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            if (hasKey) signingConfig = signingConfigs.getByName("neo")
+        }
         release {
             isMinifyEnabled = false
-            // Kişisel kullanım: release de debug anahtarıyla imzalanır, doğrudan yüklenebilir.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasKey) signingConfigs.getByName("neo") else signingConfigs.getByName("debug")
         }
     }
 
